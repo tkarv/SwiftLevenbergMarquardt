@@ -31,8 +31,6 @@ func lmSolvesNonlinearEquation() -> Bool {
 }
 
 func lmSolvesLinearEquation() -> Bool {
-    print("Hello, World!")
-
     // prepare function to calculate
     // f(x) = p_0 * x_0 + p_1 * x_1
     func f(P: [Double], X: [Double]) -> [Double] {

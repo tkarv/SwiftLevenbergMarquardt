@@ -43,9 +43,9 @@ func gradientDescent(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]], r: D
             r + (d*d)
         }
         
-        print("\(i)/\(max_iters) err: \(errorsum)")
+        //print("\(i)/\(max_iters) err: \(errorsum)")
         if errorsum < minTolerableError {
-            print("NI converged")
+            //print("NI converged")
             break
         }
         

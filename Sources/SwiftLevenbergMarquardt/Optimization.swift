@@ -9,7 +9,7 @@ import Foundation
 import Accelerate
 
 /// Optimization function prototype
-typealias OptFunc = (_ params: [Double], _ X: [Double]) -> [Double]
+public typealias OptFunc = (_ params: [Double], _ X: [Double]) -> [Double]
 
 /**
  Solve a system of linear equations (Ax = b)

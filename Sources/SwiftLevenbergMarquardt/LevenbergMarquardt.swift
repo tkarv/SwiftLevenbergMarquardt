@@ -10,7 +10,7 @@ Does Levenberg-Marquardt optimizaiton on the provide dparameters
  
  - Returns: optimized parameters
 */
-func levenbergMarquardt(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [Double] {
+public func levenbergMarquardt(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [Double] {
     let minTolerableError: Double = 0.00001
     let max_iters = 10_000
     var currP = P
@@ -141,9 +141,9 @@ func levenbergMarquardt(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -
             }
             // solve again
         }
-        print("\(i)/\(max_iters) err: \(errorsum)")
+        //("\(i)/\(max_iters) err: \(errorsum)")
         if errorsum < minTolerableError {
-            print("NI converged")
+            //print("NI converged")
             break
         }
     }
