@@ -17,12 +17,13 @@ Does  optimizaiton by Newton iteration on the provided parameters
  
  - Returns: optimized parameters
 */
-func newtonIteration(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [Double] {
+func newtonIteration(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
     let minTolerableError: Double = 0.00001
     let max_iters = 10_000
     var currP = P
     for i in 0..<max_iters {
-        let Xp = x.map{ f(currP, $0) }
+        //let Xp = x.map{ f(currP, $0) }
+        let Xp = f(currP)
         //let Xp = f(currP, x)
 //        let error = zip(Xp, X).map { (Xpvec, Xvec) in
 //            zip(Xpvec, Xvec).map { (Xpval, Xval) in
@@ -30,16 +31,21 @@ func newtonIteration(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [
 //            }
 //        }
         // calculate average error for each value
-        var error = [Double](repeating: 0.0, count: x[0].count)
-        for (Xpvec, Xvec) in zip(Xp, X) {
-            for idx in 0..<Xpvec.count {
-                error[idx] += Xpvec[idx] - Xvec[idx]
-            }
-        }
+        var error = [Double](repeating: 0.0, count: X.count)
         
-        for idx in 0..<error.count {
-            error[idx] /= Double(Xp.count)
+        for idx in 0..<X.count {
+            error[idx] += Xp[idx] - X[idx]
         }
+
+//        for (Xpvec, Xvec) in zip(Xp, X) {
+//            for idx in 0..<Xpvec.count {
+//                error[idx] += Xpvec[idx] - Xvec[idx]
+//            }
+//        }
+        
+//        for idx in 0..<error.count {
+//            error[idx] /= Double(Xp.count)
+//        }
         
         //let error = zip(Xp, X).map{$0 - $1}
         let errorsum = error.reduce(0.0) { r, d in
@@ -57,10 +63,10 @@ func newtonIteration(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [
             break
         }
         
-        let J = calculateJacobian(f: f, P: P, X: x)
-        let Jinv = invert(matrix: J, M: x[0].count, N: P.count)
+        let J = calculateJacobian(f: f, P: P)
+        let Jinv = invert(matrix: J, M: X.count, N: P.count)
         
-        let update = inner(A: Jinv, B: error, M: x[0].count, P: P.count, N: 1)
+        let update = inner(A: Jinv, B: error, M: X.count, P: P.count, N: 1)
         let zipped = zip(currP, update)
         currP = zipped.map{$0 + (-1.0)*$1}
     }

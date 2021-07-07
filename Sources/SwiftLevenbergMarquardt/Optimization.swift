@@ -9,7 +9,7 @@ import Foundation
 import Accelerate
 
 /// Optimization function prototype
-public typealias OptFunc = (_ params: [Double], _ X: [Double]) -> [Double]
+public typealias OptFunc = (_ params: [Double]) -> [Double]
 
 /**
  Solve a system of linear equations (Ax = b)
@@ -174,13 +174,13 @@ func computeDelta(X: Double) -> Double {
  Calculate Jacobian of function f with respect to parameters P.
  We calculate numerically using the provided values X
  */
-func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
+func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
     //let d = computeDelta(X: X)
     
     var J: [Double] = []
     
     // calculate original value
-    let y0 = f(P, X)
+    let y0 = f(P)
     
     for (n, p) in P.enumerated() {
         // calculate jacobian one parameter at a time
@@ -194,7 +194,7 @@ func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
         
         newP[n] += d
         
-        let y1 = f(newP, X)
+        let y1 = f(newP)
         
         let grad = zip(y1, y0).map { y1v, y0v in
             (y1v - y0v) / d
@@ -209,40 +209,40 @@ func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
 /**
  Same as above, except we average results over multiple inputs to function.
  */
-func calculateJacobian(f: OptFunc, P: [Double], X: [[Double]]) -> [Double] {
-    //let d = computeDelta(X: X)
-    
-    var J: [Double] = []
-    
-    // calculate original value
-    let y0s = X.map{ f(P, $0) }
-    
-    for (n, p) in P.enumerated() {
-        var newP = P
-        
-        let d = computeDelta(X: p)
-        
-        newP[n] += d
-        
-        let y1s = X.map{ f(newP, $0) }
-        
-        var grad: [Double] = [Double](repeating: 0.0, count: y1s[0].count)
-        
-        for idx in 0..<y1s.count {
-            let y1current = y1s[idx]
-            let y0current = y0s[idx]
-            for (y1idx, y1v) in y1current.enumerated() {
-                let y0v = y0current[y1idx]
-                grad[y1idx] += (y1v - y0v) / d
-            }
-        }
-        
-        for idx in 0..<grad.count {
-            grad[idx] /= Double(y1s.count)
-        }
-        
-        J.append(contentsOf: grad)
-    }
-    
-    return J
-}
+//func calculateJacobian(f: OptFunc, P: [Double], X: [[Double]]) -> [Double] {
+//    //let d = computeDelta(X: X)
+//
+//    var J: [Double] = []
+//
+//    // calculate original value
+//    let y0s = X.map{ f(P, $0) }
+//
+//    for (n, p) in P.enumerated() {
+//        var newP = P
+//
+//        let d = computeDelta(X: p)
+//
+//        newP[n] += d
+//
+//        let y1s = X.map{ f(newP, $0) }
+//
+//        var grad: [Double] = [Double](repeating: 0.0, count: y1s[0].count)
+//
+//        for idx in 0..<y1s.count {
+//            let y1current = y1s[idx]
+//            let y0current = y0s[idx]
+//            for (y1idx, y1v) in y1current.enumerated() {
+//                let y0v = y0current[y1idx]
+//                grad[y1idx] += (y1v - y0v) / d
+//            }
+//        }
+//
+//        for idx in 0..<grad.count {
+//            grad[idx] /= Double(y1s.count)
+//        }
+//
+//        J.append(contentsOf: grad)
+//    }
+//
+//    return J
+//}
