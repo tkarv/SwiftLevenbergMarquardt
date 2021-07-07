@@ -10,6 +10,7 @@ import Accelerate
 
 /// Optimization function prototype
 public typealias OptFunc = (_ params: [Double]) -> [Double]
+public typealias Optimizer = (_ f: (_ params: [Double]) -> [Double], _ X: [Double], _ P: [Double]) -> [Double]
 
 /**
  Solve a system of linear equations (Ax = b)
@@ -65,20 +66,61 @@ func solve(A: [Double], b: [Double], AM: Int, AN: Int, bM: Int, bN: Int) -> [Dou
  - Returns: A M x N matrix that is the result of A * B
  */
 func inner(A: [Double], B: [Double], M: Int, P: Int, N: Int) -> [Double] {
-    let aStride = vDSP_Stride(1)
-    let bStride = vDSP_Stride(1)
-    let cStride = vDSP_Stride(1)
-
+//    let aStride = vDSP_Stride(1)
+//    let bStride = vDSP_Stride(1)
+//    let cStride = vDSP_Stride(1)
+//
     var C = [Double](repeating: 0.0, count: M*N)
     
-    vDSP_mmulD(
-        A, aStride,
-        B, bStride,
-        &C, cStride,
-        vDSP_Length(M),
-        vDSP_Length(N),
-        vDSP_Length(P)
+    // Using A, B, C and M, N, K as defined
+
+    // Row-major indicates the row is contiguous in
+    // memory. The other option is column-major ordering
+    let Order = CblasColMajor
+
+    // If matrix A should be transposed
+    let TransposeA = CblasNoTrans
+
+    // If matrix B should be transposed
+    let TransposeB = CblasNoTrans
+
+    // Scaling factor for A * B
+    let alpha = Double(1.0)
+
+    // Scaling factor for matrix C
+    let beta = Double(1.0)
+
+    // In row-major ordering, the number of items
+    // in a row of matrix A (K)
+    let lda = M
+
+    // In row-major ordering, the number of items
+    // in a row of matrix B (N)
+    let ldb = P
+
+    // In row-major ordering, the number of items
+    // in a row of matrix C (N)
+    let ldc = M
+
+    cblas_dgemm(
+        Order,
+        TransposeA, TransposeB,
+        Int32(M), Int32(N), Int32(P),
+        alpha,
+        A, Int32(lda),
+        B, Int32(ldb),
+        beta,
+        &C, Int32(ldc)
     )
+    
+//    vDSP_mmulD(
+//        A, aStride,
+//        B, bStride,
+//        &C, cStride,
+//        vDSP_Length(M),
+//        vDSP_Length(N),
+//        vDSP_Length(P)
+//    )
     return C
 }
 
@@ -121,7 +163,7 @@ func invert(matrix : [Double], M: Int, N: Int) -> [Double] {
     withUnsafeMutablePointer(to: &_M, { ptrToM in
         withUnsafeMutablePointer(to: &_N) { ptrToN in
             withUnsafeMutablePointer(to: &smallerDim) { ptrToSmallerDim in
-                dgetrf_(ptrToM, ptrToN, &inMatrix, ptrToM, &pivots, &error)
+                var ret = dgetrf_(ptrToM, ptrToN, &inMatrix, ptrToM, &pivots, &error)
                 guard error == 0 else {
                     print("matrix inverse failed LU factorization with INFO code: \(error)")
                     print("""
@@ -137,7 +179,7 @@ func invert(matrix : [Double], M: Int, N: Int) -> [Double] {
                         """)
                     return
                 }
-                dgetri_(ptrToN, &inMatrix, ptrToM, &pivots, &workspace, ptrToN, &error)
+                ret = dgetri_(ptrToN, &inMatrix, ptrToM, &pivots, &workspace, ptrToN, &error)
                 guard error == 0 else {
                     print("matrix inverse failed inversion with INFO code: \(error)")
                     print("""
@@ -203,7 +245,7 @@ func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
         J.append(contentsOf: grad)
     }
     
-    return J
+    return J // transpose(A: J, M: P.count, N: y0.count)
 }
 
 /**

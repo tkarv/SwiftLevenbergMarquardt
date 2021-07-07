@@ -63,12 +63,17 @@ func newtonIteration(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
             break
         }
         
-        let J = calculateJacobian(f: f, P: P)
-        let Jinv = invert(matrix: J, M: X.count, N: P.count)
+        let J = calculateJacobian(f: f, P: currP)
+        //let Jinv = invert(matrix: J, M: X.count, N: P.count)
+        let Jt = transpose(A: J, M: X.count, N: P.count)
+        let JtJ = inner(A: Jt, B: J, M: P.count, P: X.count, N: P.count)
+        let minusJterror = inner(A: Jt, B: error, M: P.count, P: X.count, N: 1).map{$0 * -1.0}
         
-        let update = inner(A: Jinv, B: error, M: X.count, P: P.count, N: 1)
-        let zipped = zip(currP, update)
-        currP = zipped.map{$0 + (-1.0)*$1}
+        let delta = solve(A: JtJ, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
+
+        //let update = inner(A: Jinv, B: error, M: X.count, P: P.count, N: 1)
+        let zipped = zip(currP, delta)
+        currP = zipped.map{$0 + $1}
     }
     return currP
 }

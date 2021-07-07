@@ -25,12 +25,7 @@ func normalize(arr: [Double]) -> [Double] {
     return arr.map{$0 / mag}
 }
 
-func lmSolvesNonlinearEquation() -> Bool {
-    // TODO: add nonlinear test
-    return true
-}
-
-func lmSolvesLinearEquation() -> Bool {
+func solvesLinearEquation(optimizer: Optimizer) -> Bool {
     // prepare function to calculate
     // f(x) = p_0 * x_0 + p_1 * x_1
     func f(P: [Double]) -> [Double] {
@@ -53,7 +48,7 @@ func lmSolvesLinearEquation() -> Bool {
 //    var Xs: [[Double]] = []
 //    var Ys: [[Double]] = []
     
-    for x in stride(from: 1.0, through: 2.0, by: 1.0) {
+    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
         trueP.append(x)
         trueP.append(1.0)
         //let inx = [x, 1.0]
@@ -66,14 +61,15 @@ func lmSolvesLinearEquation() -> Bool {
 
     // parameters initial value
     //let params: [Double] = [0.0, 0.0]
-    var params: [Double] = [1.0, 1.0]
+    var params: [Double] = [100.0, 1000.0]
     
-    for x in stride(from: 1.0, through: 2.0, by: 1.0) {
-        params.append(x + Double.random(in: -0.1..<0.1))
-        params.append(1.0 + Double.random(in: -0.1..<0.1))
+    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
+        params.append(x)// + Double.random(in: -0.1..<0.1))
+        params.append(1.0)// + Double.random(in: -0.1..<0.1))
     }
 
-    let optP = levenbergMarquardt(f: f, X: outs, P: params)
+    //let optP = optimizer(f: f, X: outs, P: params)
+    let optP = optimizer(f, outs, params)
 
     let ntp = normalize(arr: trueP)
     let nop = normalize(arr: optP)
@@ -84,7 +80,49 @@ func lmSolvesLinearEquation() -> Bool {
     })
     
     print("dist: \(dist)")
-    return sqrt(dist) < 0.1
+    return dist < 0.1
     
 }
 
+func testMatrixFunctions() -> Bool {
+    
+    let A: [Double] = [
+        1.0, 0.0, 0.0,
+        -1.0, 1.0, 0.0,
+        0.0, 0.0, 1.0
+    ]
+    
+    // test inverse
+    let invA = invert(matrix: A, M: 3, N: 3)
+    
+    var bools: [Bool] = []
+    bools.append(invA[1] == 0.0)
+    bools.append(invA[3] == 1.0)
+    
+    // test mul
+    
+    let LHS: [Double] = [
+        1, 4, 7,
+        2, 5, 8,
+        3, 6, 9
+    ]
+    
+    let RHS: [Double] = [
+        10, 11, 12
+    ]
+    
+    let mul = inner(A: LHS, B: RHS, M: 3, P: 3, N: 1)
+    
+    bools.append(mul[0] == 68.0)
+    bools.append(mul[1] == 167.0)
+    bools.append(mul[2] == 266.0)
+    
+    // test trans
+    
+    let transA = transpose(A: A, M: 3, N: 3)
+    bools.append(transA[1] == -1.0)
+    
+    return bools.allSatisfy { b in
+        b
+    }
+}

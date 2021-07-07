@@ -11,7 +11,7 @@ Does Levenberg-Marquardt optimizaiton on the provide dparameters
  - Returns: optimized parameters
 */
 public func levenbergMarquardt(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
-    let minTolerableError: Double = 0.00001
+    let minTolerableError: Double = 0.000001
     let max_iters = 10_000
     var currP = P
     
@@ -54,7 +54,7 @@ public func levenbergMarquardt(f: OptFunc, X: [Double], P: [Double]) -> [Double]
         
         let sumelement = zip(JtJ, lambda).map{$0 + $1}
 
-        let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: X.count, bM: P.count, bN: 1)
+        let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
         
         currP = zip(currP, delta).map{$0 + $1}
         
@@ -101,7 +101,7 @@ public func levenbergMarquardt(f: OptFunc, X: [Double], P: [Double]) -> [Double]
                 
                 let sumelement = zip(JtJ, lambda).map{$0 + $1}
 
-                let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: X.count, bM: P.count, bN: 1)
+                let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
                 
                 currP = zip(currP, delta).map{$0 + $1}
                 

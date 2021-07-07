@@ -20,8 +20,9 @@ Does gradient descent  optimizaiton on the provide dparameters
  
  - Returns: optimized parameters
 */
-func gradientDescent(f: OptFunc, X: [Double], P: [Double], r: Double) -> [Double] {
-    let minTolerableError: Double = 0.00001
+func gradientDescent(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+    let r = 0.01
+    let minTolerableError: Double = 0.000001
     let max_iters = 10_000
     var currP = P
     for i in 0..<max_iters {
@@ -48,7 +49,7 @@ func gradientDescent(f: OptFunc, X: [Double], P: [Double], r: Double) -> [Double
             r + (d*d)
         }
         
-        //print("\(i)/\(max_iters) err: \(errorsum)")
+        print("\(i)/\(max_iters) err: \(errorsum)")
         if errorsum < minTolerableError {
             //print("NI converged")
             break
@@ -63,11 +64,16 @@ func gradientDescent(f: OptFunc, X: [Double], P: [Double], r: Double) -> [Double
         let minusJterror = inner(A: Jt, B: error, M: P.count, P: X.count, N: 1).map{$0 * -1.0}
         
         var lambda: [Double] = [Double](repeating: 0.0, count: P.count * P.count)
+        
+//        for j in 0..<P.count {
+//            lambda[j*P.count + j] = 1.0/r
+//        }
+        
         for j in 0..<P.count {
             lambda[j*P.count + j] = 1.0/r * JtJ[j*P.count + j]
         }
 
-        let delta = solve(A: lambda, b: minusJterror, AM: P.count, AN: X.count, bM: P.count, bN: 1)
+        let delta = solve(A: lambda, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
         
         currP = zip(currP, delta).map{$0 + $1}
     }
