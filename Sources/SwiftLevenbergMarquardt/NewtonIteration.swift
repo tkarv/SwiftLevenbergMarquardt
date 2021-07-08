@@ -18,6 +18,7 @@ Does  optimizaiton by Newton iteration on the provided parameters
  - Returns: optimized parameters
 */
 public class NewtonIterationOptimizer : Optimizer {
+    public init() {}
     public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
         let minTolerableError: Double = 0.00001
         let max_iters = 10_000
