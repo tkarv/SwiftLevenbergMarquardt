@@ -7,15 +7,18 @@
         }
         
         func testNewtonIteration() {
-            XCTAssert(solvesLinearEquation(optimizer: newtonIteration))
+            let opt = NewtonIterationOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
         }
         
         func testGradientDescent() {
-            XCTAssert(solvesLinearEquation(optimizer: gradientDescent))
+            let opt = GradientDescentOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
         }
         
         func testLevMarq() {
-            XCTAssert(solvesLinearEquation(optimizer: levenbergMarquardt))
+            let opt = LevenbergMarquardtOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
         }
         
     }
