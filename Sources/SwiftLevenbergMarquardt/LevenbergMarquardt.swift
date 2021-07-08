@@ -12,10 +12,10 @@ Does Levenberg-Marquardt optimizaiton on the provide dparameters
  
  - Returns: optimized parameters
 */
-class LevenbergMarquardtOptimizer : Optimizer {
+public class LevenbergMarquardtOptimizer : Optimizer {
     var tolerance: Double = 0.01
     var max_iters: Int = 10_000
-    func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
         var currP = P
         
         //var Xp = x.map{ f(currP, $0) }

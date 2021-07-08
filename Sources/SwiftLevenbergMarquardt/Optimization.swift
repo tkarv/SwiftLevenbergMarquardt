@@ -12,7 +12,7 @@ import Accelerate
 public typealias OptFunc = (_ params: [Double]) -> [Double]
 //public typealias Optimizer = (_ f: (_ params: [Double]) -> [Double], _ X: [Double], _ P: [Double]) -> [Double]
 
-protocol Optimizer {
+public protocol Optimizer {
     func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double]
 }
 

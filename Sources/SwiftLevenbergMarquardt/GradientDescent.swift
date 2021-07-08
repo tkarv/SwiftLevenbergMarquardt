@@ -20,8 +20,8 @@ Does gradient descent  optimizaiton on the provide dparameters
  
  - Returns: optimized parameters
 */
-class GradientDescentOptimizer : Optimizer {
-    func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+public class GradientDescentOptimizer : Optimizer {
+    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
         let r = 0.01
         let minTolerableError: Double = 0.000001
         let max_iters = 10_000
