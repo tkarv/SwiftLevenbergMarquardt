@@ -10,10 +10,12 @@ import Accelerate
 
 /// Optimization function prototype
 public typealias OptFunc = (_ params: [Double]) -> [Double]
+public typealias OptFuncWithInputOutput = (_ params: [Double], _ x: [Double]) -> [Double]
 //public typealias Optimizer = (_ f: (_ params: [Double]) -> [Double], _ X: [Double], _ P: [Double]) -> [Double]
 
 public protocol Optimizer {
     func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double]
+    func optimizeWithInputOutput(f: OptFuncWithInputOutput, X: [Double], P: [Double], x: [Double]) -> [Double]
 }
 
 /**
@@ -241,6 +243,42 @@ func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
         newP[n] += d
         
         let y1 = f(newP)
+        
+        let grad = zip(y1, y0).map { y1v, y0v in
+            (y1v - y0v) / d
+        }
+        
+        J.append(contentsOf: grad)
+    }
+    
+    return J // transpose(A: J, M: P.count, N: y0.count)
+}
+
+/**
+ Calculate Jacobian of function f with respect to parameters P.
+ We calculate numerically using the provided values X
+ */
+func calculateJacobian(f: OptFuncWithInputOutput, P: [Double], x: [Double]) -> [Double] {
+    //let d = computeDelta(X: X)
+    
+    var J: [Double] = []
+    
+    // calculate original value
+    let y0 = f(P, x)
+    
+    for (n, p) in P.enumerated() {
+        // calculate jacobian one parameter at a time
+        // end result is a flattened M by N matrix where elements at (m,n) are
+        // ∂f_m / ∂p_n
+        // elements are in column-major order
+        // (calculated for one parameter delta at a time)
+        var newP = P
+        
+        let d = computeDelta(X: p)
+        
+        newP[n] += d
+        
+        let y1 = f(newP, x)
         
         let grad = zip(y1, y0).map { y1v, y0v in
             (y1v - y0v) / d

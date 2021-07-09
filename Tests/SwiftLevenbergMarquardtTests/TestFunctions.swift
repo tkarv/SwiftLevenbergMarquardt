@@ -84,6 +84,66 @@ func solvesLinearEquation(optimizer: Optimizer) -> Bool {
     
 }
 
+func solvesLinearEquationWithIO(optimizer: Optimizer) -> Bool {
+    // prepare function to calculate
+    // f(x) = p_0 * x_0 + p_1 * x_1
+    func f(P: [Double], x: [Double]) -> [Double] {
+        let a: Double = P[0]
+        let b: Double = P[1]
+        var ret: [Double] = []
+        for idx in stride(from: 0, to: x.count, by: 2) {
+            ret.append(a * x[idx])
+            ret.append(b * x[idx+1])
+        }
+        //let a: Double = P[0] * P[1]
+        //let b: Double = P[2] * P[3]
+        return ret
+    }
+
+    // generate x, y pairs from f(x) = 123.45 * x + 987.65
+    // with some noise
+    let trueP: [Double] = [123.45, 987.65]
+    
+    var Xs: [Double] = []
+    var Ys: [Double] = []
+    
+    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
+        let inx = [x, 1.0]
+        let iny = f(P: trueP, x: inx).withNoise(variance: 100)
+        Xs.append(inx[0])
+        Xs.append(inx[1])
+        Ys.append(iny[0])
+        Ys.append(iny[1])
+        //Xs.append(inx)
+        //Ys.append(iny)
+    }
+    
+    // parameters initial value
+    //let params: [Double] = [0.0, 0.0]
+    let params: [Double] = [1.0, 1.0]
+    
+//    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
+//        params.append(x)// + Double.random(in: -0.1..<0.1))
+//        params.append(1.0)// + Double.random(in: -0.1..<0.1))
+//    }
+
+    //let optP = optimizer(f: f, X: outs, P: params)
+    let optP = optimizer.optimizeWithInputOutput(f: f, X: Ys, P: params, x: Xs)
+
+    let ntp = normalize(arr: trueP)
+    let nop = normalize(arr: optP)
+    
+    // calc dist to original params
+    let dist: Double = sqrt(zip(ntp, nop).reduce(0.0) { res, val in
+        res + (val.0 - val.1) * (val.0 - val.1)
+    })
+    
+    print("dist: \(dist)")
+    return dist < 0.1
+    
+}
+
+
 func testMatrixFunctions() -> Bool {
     
     let A: [Double] = [

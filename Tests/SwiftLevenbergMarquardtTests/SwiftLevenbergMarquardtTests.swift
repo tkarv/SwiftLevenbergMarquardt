@@ -21,4 +21,9 @@
             XCTAssert(solvesLinearEquation(optimizer: opt))
         }
         
+        func testLevMarqWithInputOutput() {
+            let opt = LevenbergMarquardtOptimizer()
+            XCTAssert(solvesLinearEquationWithIO(optimizer: opt))
+        }
+        
     }
