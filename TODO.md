@@ -1,3 +1,7 @@
 # 21/07/02
 
-- [ ] add a form of solver that minimizes functions
+- [x] add a form of solver that minimizes functions
+
+# 21/07/14
+
+--

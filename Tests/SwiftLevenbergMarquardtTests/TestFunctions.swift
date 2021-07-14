@@ -71,6 +71,7 @@ func solvesLinearEquation(optimizer: Optimizer) -> Bool {
     //let optP = optimizer(f: f, X: outs, P: params)
     let optP = optimizer.optimize(f: f, X: outs, P: params)
 
+    print(optP)
     let ntp = normalize(arr: trueP)
     let nop = normalize(arr: optP)
     
@@ -107,9 +108,9 @@ func solvesLinearEquationWithIO(optimizer: Optimizer) -> Bool {
     var Xs: [Double] = []
     var Ys: [Double] = []
     
-    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
+    for x in stride(from: 1.0, through: 10.0, by: 1.0) {
         let inx = [x, 1.0]
-        let iny = f(P: trueP, x: inx).withNoise(variance: 100)
+        let iny = f(P: trueP, x: inx).withNoise(variance: 5)
         Xs.append(inx[0])
         Xs.append(inx[1])
         Ys.append(iny[0])
@@ -120,7 +121,7 @@ func solvesLinearEquationWithIO(optimizer: Optimizer) -> Bool {
     
     // parameters initial value
     //let params: [Double] = [0.0, 0.0]
-    let params: [Double] = [1.0, 1.0]
+    let params: [Double] = [100.0, 1000.0]
     
 //    for x in stride(from: 1.0, through: 100.0, by: 1.0) {
 //        params.append(x)// + Double.random(in: -0.1..<0.1))
@@ -129,7 +130,7 @@ func solvesLinearEquationWithIO(optimizer: Optimizer) -> Bool {
 
     //let optP = optimizer(f: f, X: outs, P: params)
     let optP = optimizer.optimizeWithInputOutput(f: f, X: Ys, P: params, x: Xs)
-
+    print(optP)
     let ntp = normalize(arr: trueP)
     let nop = normalize(arr: optP)
     
