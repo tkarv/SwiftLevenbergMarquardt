@@ -55,7 +55,7 @@ public class GradientDescentOptimizer : Optimizer {
                 r + (d*d)
             }
             
-            print("\(i)/\(max_iters) err: \(errorsum)")
+            //print("\(i)/\(max_iters) err: \(errorsum)")
             if errorsum < minTolerableError {
                 //print("NI converged")
                 break

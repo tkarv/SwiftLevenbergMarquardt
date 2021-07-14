@@ -82,7 +82,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
                 r + (d*d)
             })
             
-            print("\(iter)/\(max_iters) err: \(prevError)")
+            //print("\(iter)/\(max_iters) err: \(prevError)")
             if prevError < tolerance {
                 // done
                 //print("NI converged")
@@ -108,7 +108,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
                 lambdaMulti *= 10
                 if lambdaMulti > 1e9 {
                     // failed
-                    print("LM early quit, lambda too large: \(lambdaMulti)")
+                    //print("LM early quit, lambda too large: \(lambdaMulti)")
                     return currP
                 }
             }
@@ -142,7 +142,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
                 r + (d*d)
             })
             
-            print("\(iter)/\(max_iters) err: \(prevError)")
+            //print("\(iter)/\(max_iters) err: \(prevError)")
             if prevError < tolerance {
                 // done
                 //print("NI converged")
@@ -168,7 +168,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
                 lambdaMulti *= 10
                 if lambdaMulti > 1e9 {
                     // failed
-                    print("LM failed to converge, lambda too large: \(lambdaMulti)")
+                    //print("LM early quit, lambda too large: \(lambdaMulti)")
                     return currP
                 }
             }
