@@ -2,15 +2,28 @@
     @testable import SwiftLevenbergMarquardt
 
     final class SwiftLevenbergMarquardtTests: XCTestCase {
-        func testLinear() {
-            // This is an example of a functional test case.
-            // Use XCTAssert and related functions to verify your tests produce the correct
-            // results.
-            //XCTAssertEqual(testestest().text, "Hello, World!")
-            XCTAssert(lmSolvesLinearEquation())
+        func testMatrixOperations() {
+            XCTAssert(testMatrixFunctions())
         }
         
-        func testNonlinear() {
-            XCTAssert(lmSolvesNonlinearEquation())
+        func testNewtonIteration() {
+            let opt = NewtonIterationOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
         }
+        
+        func testGradientDescent() {
+            let opt = GradientDescentOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
+        }
+        
+        func testLevMarq() {
+            let opt = LevenbergMarquardtOptimizer()
+            XCTAssert(solvesLinearEquation(optimizer: opt))
+        }
+        
+        func testLevMarqWithInputOutput() {
+            let opt = LevenbergMarquardtOptimizer()
+            XCTAssert(solvesLinearEquationWithIO(optimizer: opt))
+        }
+        
     }

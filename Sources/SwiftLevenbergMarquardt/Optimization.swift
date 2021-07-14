@@ -9,7 +9,14 @@ import Foundation
 import Accelerate
 
 /// Optimization function prototype
-public typealias OptFunc = (_ params: [Double], _ X: [Double]) -> [Double]
+public typealias OptFunc = (_ params: [Double]) -> [Double]
+public typealias OptFuncWithInputOutput = (_ params: [Double], _ x: [Double]) -> [Double]
+//public typealias Optimizer = (_ f: (_ params: [Double]) -> [Double], _ X: [Double], _ P: [Double]) -> [Double]
+
+public protocol Optimizer {
+    func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double]
+    func optimizeWithInputOutput(f: OptFuncWithInputOutput, X: [Double], P: [Double], x: [Double]) -> [Double]
+}
 
 /**
  Solve a system of linear equations (Ax = b)
@@ -65,20 +72,61 @@ func solve(A: [Double], b: [Double], AM: Int, AN: Int, bM: Int, bN: Int) -> [Dou
  - Returns: A M x N matrix that is the result of A * B
  */
 func inner(A: [Double], B: [Double], M: Int, P: Int, N: Int) -> [Double] {
-    let aStride = vDSP_Stride(1)
-    let bStride = vDSP_Stride(1)
-    let cStride = vDSP_Stride(1)
-
+//    let aStride = vDSP_Stride(1)
+//    let bStride = vDSP_Stride(1)
+//    let cStride = vDSP_Stride(1)
+//
     var C = [Double](repeating: 0.0, count: M*N)
     
-    vDSP_mmulD(
-        A, aStride,
-        B, bStride,
-        &C, cStride,
-        vDSP_Length(M),
-        vDSP_Length(N),
-        vDSP_Length(P)
+    // Using A, B, C and M, N, K as defined
+
+    // Row-major indicates the row is contiguous in
+    // memory. The other option is column-major ordering
+    let Order = CblasColMajor
+
+    // If matrix A should be transposed
+    let TransposeA = CblasNoTrans
+
+    // If matrix B should be transposed
+    let TransposeB = CblasNoTrans
+
+    // Scaling factor for A * B
+    let alpha = Double(1.0)
+
+    // Scaling factor for matrix C
+    let beta = Double(1.0)
+
+    // In row-major ordering, the number of items
+    // in a row of matrix A (K)
+    let lda = M
+
+    // In row-major ordering, the number of items
+    // in a row of matrix B (N)
+    let ldb = P
+
+    // In row-major ordering, the number of items
+    // in a row of matrix C (N)
+    let ldc = M
+
+    cblas_dgemm(
+        Order,
+        TransposeA, TransposeB,
+        Int32(M), Int32(N), Int32(P),
+        alpha,
+        A, Int32(lda),
+        B, Int32(ldb),
+        beta,
+        &C, Int32(ldc)
     )
+    
+//    vDSP_mmulD(
+//        A, aStride,
+//        B, bStride,
+//        &C, cStride,
+//        vDSP_Length(M),
+//        vDSP_Length(N),
+//        vDSP_Length(P)
+//    )
     return C
 }
 
@@ -121,7 +169,7 @@ func invert(matrix : [Double], M: Int, N: Int) -> [Double] {
     withUnsafeMutablePointer(to: &_M, { ptrToM in
         withUnsafeMutablePointer(to: &_N) { ptrToN in
             withUnsafeMutablePointer(to: &smallerDim) { ptrToSmallerDim in
-                dgetrf_(ptrToM, ptrToN, &inMatrix, ptrToM, &pivots, &error)
+                var ret = dgetrf_(ptrToM, ptrToN, &inMatrix, ptrToM, &pivots, &error)
                 guard error == 0 else {
                     print("matrix inverse failed LU factorization with INFO code: \(error)")
                     print("""
@@ -137,7 +185,7 @@ func invert(matrix : [Double], M: Int, N: Int) -> [Double] {
                         """)
                     return
                 }
-                dgetri_(ptrToN, &inMatrix, ptrToM, &pivots, &workspace, ptrToN, &error)
+                ret = dgetri_(ptrToN, &inMatrix, ptrToM, &pivots, &workspace, ptrToN, &error)
                 guard error == 0 else {
                     print("matrix inverse failed inversion with INFO code: \(error)")
                     print("""
@@ -174,13 +222,13 @@ func computeDelta(X: Double) -> Double {
  Calculate Jacobian of function f with respect to parameters P.
  We calculate numerically using the provided values X
  */
-func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
+func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
     //let d = computeDelta(X: X)
     
     var J: [Double] = []
     
     // calculate original value
-    let y0 = f(P, X)
+    let y0 = f(P)
     
     for (n, p) in P.enumerated() {
         // calculate jacobian one parameter at a time
@@ -194,7 +242,7 @@ func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
         
         newP[n] += d
         
-        let y1 = f(newP, X)
+        let y1 = f(newP)
         
         let grad = zip(y1, y0).map { y1v, y0v in
             (y1v - y0v) / d
@@ -203,46 +251,82 @@ func calculateJacobian(f: OptFunc, P: [Double], X: [Double]) -> [Double] {
         J.append(contentsOf: grad)
     }
     
-    return J
+    return J // transpose(A: J, M: P.count, N: y0.count)
 }
 
 /**
- Same as above, except we average results over multiple inputs to function.
+ Calculate Jacobian of function f with respect to parameters P.
+ We calculate numerically using the provided values X
  */
-func calculateJacobian(f: OptFunc, P: [Double], X: [[Double]]) -> [Double] {
+func calculateJacobian(f: OptFuncWithInputOutput, P: [Double], x: [Double]) -> [Double] {
     //let d = computeDelta(X: X)
     
     var J: [Double] = []
     
     // calculate original value
-    let y0s = X.map{ f(P, $0) }
+    let y0 = f(P, x)
     
     for (n, p) in P.enumerated() {
+        // calculate jacobian one parameter at a time
+        // end result is a flattened M by N matrix where elements at (m,n) are
+        // ∂f_m / ∂p_n
+        // elements are in column-major order
+        // (calculated for one parameter delta at a time)
         var newP = P
         
         let d = computeDelta(X: p)
         
         newP[n] += d
         
-        let y1s = X.map{ f(newP, $0) }
+        let y1 = f(newP, x)
         
-        var grad: [Double] = [Double](repeating: 0.0, count: y1s[0].count)
-        
-        for idx in 0..<y1s.count {
-            let y1current = y1s[idx]
-            let y0current = y0s[idx]
-            for (y1idx, y1v) in y1current.enumerated() {
-                let y0v = y0current[y1idx]
-                grad[y1idx] += (y1v - y0v) / d
-            }
-        }
-        
-        for idx in 0..<grad.count {
-            grad[idx] /= Double(y1s.count)
+        let grad = zip(y1, y0).map { y1v, y0v in
+            (y1v - y0v) / d
         }
         
         J.append(contentsOf: grad)
     }
     
-    return J
+    return J // transpose(A: J, M: P.count, N: y0.count)
 }
+
+/**
+ Same as above, except we average results over multiple inputs to function.
+ */
+//func calculateJacobian(f: OptFunc, P: [Double], X: [[Double]]) -> [Double] {
+//    //let d = computeDelta(X: X)
+//
+//    var J: [Double] = []
+//
+//    // calculate original value
+//    let y0s = X.map{ f(P, $0) }
+//
+//    for (n, p) in P.enumerated() {
+//        var newP = P
+//
+//        let d = computeDelta(X: p)
+//
+//        newP[n] += d
+//
+//        let y1s = X.map{ f(newP, $0) }
+//
+//        var grad: [Double] = [Double](repeating: 0.0, count: y1s[0].count)
+//
+//        for idx in 0..<y1s.count {
+//            let y1current = y1s[idx]
+//            let y0current = y0s[idx]
+//            for (y1idx, y1v) in y1current.enumerated() {
+//                let y0v = y0current[y1idx]
+//                grad[y1idx] += (y1v - y0v) / d
+//            }
+//        }
+//
+//        for idx in 0..<grad.count {
+//            grad[idx] /= Double(y1s.count)
+//        }
+//
+//        J.append(contentsOf: grad)
+//    }
+//
+//    return J
+//}

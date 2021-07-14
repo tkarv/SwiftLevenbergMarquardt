@@ -1,6 +1,8 @@
 import Foundation
 import simd
 
+let maxLMIterations = 10
+
 /**
 Does Levenberg-Marquardt optimizaiton on the provide dparameters
     
@@ -10,142 +12,169 @@ Does Levenberg-Marquardt optimizaiton on the provide dparameters
  
  - Returns: optimized parameters
 */
-public func levenbergMarquardt(f: OptFunc, X: [[Double]], P: [Double], x: [[Double]]) -> [Double] {
-    let minTolerableError: Double = 0.00001
-    let max_iters = 10_000
-    var currP = P
-    
-    var Xp = x.map{ f(currP, $0) }
-    // calculate average error for each value
-    var error = [Double](repeating: 0.0, count: x[0].count)
-    
-    for (Xpvec, Xvec) in zip(Xp, X) {
-        for idx in 0..<Xpvec.count {
-            error[idx] += Xpvec[idx] - Xvec[idx]
-        }
+public class LevenbergMarquardtOptimizer : Optimizer {
+    public var tolerance: Double = 0.01
+    public var max_iters: Int = 10_000
+    public var max_retries: Int = 10
+    public init() {
+        
     }
     
-    for idx in 0..<error.count {
-        error[idx] /= Double(Xp.count)
+    func calculateError(newX: [Double], gtX: [Double]) -> [Double] {
+        let error = zip(newX, gtX).map{ $0 - $1 }
+        return error
     }
     
-    var errorsum = error.reduce(0.0) { r, d in
-        r + (d*d)
-    }
-    
-    var lastl = 0.0
-    
-    for i in 0..<max_iters {
-        let J = calculateJacobian(f: f, P: currP, X: x)
-        
-        let Jt = transpose(A: J, M: x[0].count, N: P.count)
-
-        let JtJ = inner(A: Jt, B: J, M: P.count, P: x[0].count, N: P.count)
-        
-        let minusJterror = inner(A: Jt, B: error, M: P.count, P: x[0].count, N: 1).map{$0 * -1.0}
-
-        if lastl == 0.0 {
-            for j in 0..<P.count {
-                lastl += JtJ[j*P.count + j]
-            }
-            lastl /= Double(P.count)
-            lastl *= 1e-3
-        }
-        
+    func calculateLambda(P: [Double], JtJ: [Double], l: Double) -> [Double] {
         var lambda: [Double] = [Double](repeating: 0.0, count: P.count * P.count)
         for j in 0..<P.count {
-            lambda[j*P.count + j] = lastl * JtJ[j*P.count + j]
+            lambda[j*P.count + j] = l * JtJ[j*P.count + j]
         }
+        return lambda
+    }
+    
+    func getNextP(f: OptFunc, X: [Double], P: [Double], error: [Double], lambdaMulti: Double) -> [Double] {
+        // refine P
+        let J = calculateJacobian(f: f, P: P)
+        let Jt = transpose(A: J, M: X.count, N: P.count)
+        let JtJ = inner(A: Jt, B: J, M: P.count, P: X.count, N: P.count)
+        let minusJterror = inner(A: Jt, B: error, M: P.count, P: X.count, N: 1).map{$0 * -1.0}
+
+        let lambda = calculateLambda(P: P, JtJ: JtJ, l: lambdaMulti)
         
         let sumelement = zip(JtJ, lambda).map{$0 + $1}
 
-        let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: x[0].count, bM: P.count, bN: 1)
+        let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
         
-        currP = zip(currP, delta).map{$0 + $1}
+        return zip(P, delta).map{$0 + $1}
+    }
+    
+    func getNextP(f: OptFuncWithInputOutput, X: [Double], x: [Double], P: [Double], error: [Double], lambdaMulti: Double) -> [Double] {
+        // refine P
+        let J = calculateJacobian(f: f, P: P, x: x)
+        let Jt = transpose(A: J, M: X.count, N: P.count)
+        let JtJ = inner(A: Jt, B: J, M: P.count, P: X.count, N: P.count)
+        let minusJterror = inner(A: Jt, B: error, M: P.count, P: X.count, N: 1).map{$0 * -1.0}
+
+        let lambda = calculateLambda(P: P, JtJ: JtJ, l: lambdaMulti)
         
-        Xp = x.map{ f(currP, $0) }
+        let sumelement = zip(JtJ, lambda).map{$0 + $1}
+
+        let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: P.count, bM: P.count, bN: 1)
         
-        let lasterrorsum = errorsum
+        return zip(P, delta).map{$0 + $1}
+    }
+    
+    public func optimizeWithInputOutput(f: OptFuncWithInputOutput, X: [Double], P: [Double], x: [Double]) -> [Double] {
+        var iter = 0
+        var currP = P
+        var Xp: [Double] = []
+        var lambdaMulti = 1e-3
+        var prevError = Double.greatestFiniteMagnitude
+        var currError = 0.0
+        var errorVec: [Double] = []
         
-        error = [Double](repeating: 0.0, count: x[0].count)
-        
-        for (Xpvec, Xvec) in zip(Xp, X) {
-            for idx in 0..<Xpvec.count {
-                error[idx] += Xpvec[idx] - Xvec[idx]
+        while iter < max_iters {
+            // check error
+            Xp = f(currP, x)
+            errorVec = calculateError(newX: Xp, gtX: X)
+            prevError = sqrt(errorVec.reduce(0.0) { r, d in
+                r + (d*d)
+            })
+            
+            print("\(iter)/\(max_iters) err: \(prevError)")
+            if prevError < tolerance {
+                // done
+                //print("NI converged")
+                return currP
             }
-        }
-        
-        for idx in 0..<error.count {
-            error[idx] /= Double(Xp.count)
-        }
-        
-        errorsum = error.reduce(0.0) { r, d in
-            r + (d*d)
-        }
-        
-        if errorsum < lasterrorsum {
-            // accept
-            lastl /= 10
-        } else {
-            while true {
-                lastl *= 10
-                let J = calculateJacobian(f: f, P: currP, X: x)
-                
-                let Jt = transpose(A: J, M: x[0].count, N: P.count)
-
-                let JtJ = inner(A: Jt, B: J, M: P.count, P: x[0].count, N: P.count)
-                
-                let minusJterror = inner(A: Jt, B: error, M: P.count, P: x[0].count, N: 1).map{$0 * -1.0}
-
-                if lastl == 0.0 {
-                    for j in 0..<P.count {
-                        lastl += JtJ[j*P.count + P.count]
-                    }
-                    lastl /= Double(P.count)
-                    lastl *= 1e-3
-                }
-                
-                var lambda: [Double] = [Double](repeating: 0.0, count: P.count * P.count)
-                for j in 0..<P.count {
-                    lambda[j*P.count + j] = lastl * JtJ[j*P.count + j]
-                }
-                
-                let sumelement = zip(JtJ, lambda).map{$0 + $1}
-
-                let delta = solve(A: sumelement, b: minusJterror, AM: P.count, AN: x[0].count, bM: P.count, bN: 1)
-                
-                currP = zip(currP, delta).map{$0 + $1}
-                
-                Xp = x.map{ f(currP, $0) }
-                
-                let lasterrorsum = errorsum
-                
-                error = [Double](repeating: 0.0, count: x[0].count)
-                
-                for (Xpvec, Xvec) in zip(Xp, X) {
-                    for idx in 0..<Xpvec.count {
-                        error[idx] += Xpvec[idx] - Xvec[idx]
-                    }
-                }
-                
-                for idx in 0..<error.count {
-                    error[idx] /= Double(Xp.count)
-                }
-                
-                errorsum = error.reduce(0.0) { r, d in
+                        
+            // thsi doesnt trigger on first iteration
+            // if error didnt decrease then increase lambdaMulti adn try again
+            currError = prevError + 1
+            while currError >= prevError {
+                let testP = getNextP(f: f, X: X, x: x, P: currP, error: errorVec, lambdaMulti: lambdaMulti)
+                let testXp = f(testP, x)
+                errorVec = calculateError(newX: testXp, gtX: X)
+                currError = sqrt(errorVec.reduce(0.0) { r, d in
                     r + (d*d)
-                }
-                if errorsum < lasterrorsum {
+                })
+                
+                if currError < prevError {
+                    currP = testP
+                    lambdaMulti /= 10
                     break
                 }
+                lambdaMulti *= 10
+                if lambdaMulti > 1e9 {
+                    // failed
+                    print("LM early quit, lambda too large: \(lambdaMulti)")
+                    return currP
+                }
             }
-            // solve again
+            
+            iter += 1
         }
-        //("\(i)/\(max_iters) err: \(errorsum)")
-        if errorsum < minTolerableError {
-            //print("NI converged")
-            break
-        }
+        return currP
     }
-    return currP
+    
+    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+        // calculate average error for each value
+        //var error = [Double](repeating: 0.0, count: X.count)
+
+        //for idx in 0..<error.count {
+        //    error[idx] += Xp[idx] - X[idx]
+        //}
+            
+        var iter = 0
+        var currP = P
+        var Xp: [Double] = []
+        var lambdaMulti = 1e-3
+        var prevError = Double.greatestFiniteMagnitude
+        var currError = 0.0
+        var errorVec: [Double] = []
+        
+        while iter < max_iters {
+            // check error
+            Xp = f(currP)
+            errorVec = calculateError(newX: Xp, gtX: X)
+            prevError = sqrt(errorVec.reduce(0.0) { r, d in
+                r + (d*d)
+            })
+            
+            print("\(iter)/\(max_iters) err: \(prevError)")
+            if prevError < tolerance {
+                // done
+                //print("NI converged")
+                return currP
+            }
+                        
+            // thsi doesnt trigger on first iteration
+            // if error didnt decrease then increase lambdaMulti adn try again
+            currError = prevError + 1
+            while currError >= prevError {
+                let testP = getNextP(f: f, X: X, P: currP, error: errorVec, lambdaMulti: lambdaMulti)
+                let testXp = f(testP)
+                errorVec = calculateError(newX: testXp, gtX: X)
+                currError = sqrt(errorVec.reduce(0.0) { r, d in
+                    r + (d*d)
+                })
+                
+                if currError < prevError {
+                    currP = testP
+                    lambdaMulti /= 10
+                    break
+                }
+                lambdaMulti *= 10
+                if lambdaMulti > 1e9 {
+                    // failed
+                    print("LM failed to converge, lambda too large: \(lambdaMulti)")
+                    return currP
+                }
+            }
+            
+            iter += 1
+        }
+        return currP
+    }
 }
