@@ -20,8 +20,16 @@ public class LevenbergMarquardtOptimizer : Optimizer {
         
     }
     
-    func calculateError(newX: [Double], gtX: [Double]) -> [Double] {
-        let error = zip(newX, gtX).map{ $0 - $1 }
+//    func calculateError(newX: [Double], gtX: [Double]) -> [Double] {
+//        let error = zip(newX, gtX).map{ $0 - $1 }
+//        return error
+//    }
+    
+    func calculateError(newX: [Double], gtX: [Double], mask: [Double]? = nil) -> [Double] {
+        var error = zip(newX, gtX).map{ $0 - $1 }
+        if mask != nil {
+            error = zip(error, mask!).map{$0 * $1}
+        }
         return error
     }
     
@@ -33,9 +41,9 @@ public class LevenbergMarquardtOptimizer : Optimizer {
         return lambda
     }
     
-    func getNextP(f: OptFunc, X: [Double], P: [Double], error: [Double], lambdaMulti: Double) -> [Double] {
+    func getNextP(f: OptFunc, X: [Double], P: [Double], error: [Double], lambdaMulti: Double, mask: [Double]? = nil) -> [Double] {
         // refine P
-        let J = calculateJacobian(f: f, P: P)
+        let J = calculateJacobian(f: f, P: P, mask: mask)
         let Jt = transpose(A: J, M: X.count, N: P.count)
         let JtJ = inner(A: Jt, B: J, M: P.count, P: X.count, N: P.count)
         let minusJterror = inner(A: Jt, B: error, M: P.count, P: X.count, N: 1).map{$0 * -1.0}
@@ -48,7 +56,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
         
         return zip(P, delta).map{$0 + $1}
     }
-    
+        
     func getNextP(f: OptFuncWithInputOutput, X: [Double], x: [Double], P: [Double], error: [Double], lambdaMulti: Double) -> [Double] {
         // refine P
         let J = calculateJacobian(f: f, P: P, x: x)
@@ -118,7 +126,67 @@ public class LevenbergMarquardtOptimizer : Optimizer {
         return currP
     }
     
-    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+//    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+//        // calculate average error for each value
+//        //var error = [Double](repeating: 0.0, count: X.count)
+//
+//        //for idx in 0..<error.count {
+//        //    error[idx] += Xp[idx] - X[idx]
+//        //}
+//
+//        var iter = 0
+//        var currP = P
+//        var Xp: [Double] = []
+//        var lambdaMulti = 1e-3
+//        var prevError = Double.greatestFiniteMagnitude
+//        var currError = 0.0
+//        var errorVec: [Double] = []
+//
+//        while iter < max_iters {
+//            // check error
+//            Xp = f(currP)
+//            errorVec = calculateError(newX: Xp, gtX: X)
+//            prevError = sqrt(errorVec.reduce(0.0) { r, d in
+//                r + (d*d)
+//            })
+//
+//            //print("\(iter)/\(max_iters) err: \(prevError)")
+//            if prevError < tolerance {
+//                // done
+//                //print("NI converged")
+//                return currP
+//            }
+//
+//            // thsi doesnt trigger on first iteration
+//            // if error didnt decrease then increase lambdaMulti adn try again
+//            currError = prevError + 1
+//            while currError >= prevError {
+//                let testP = getNextP(f: f, X: X, P: currP, error: errorVec, lambdaMulti: lambdaMulti)
+//                let testXp = f(testP)
+//                errorVec = calculateError(newX: testXp, gtX: X)
+//                currError = sqrt(errorVec.reduce(0.0) { r, d in
+//                    r + (d*d)
+//                })
+//
+//                if currError < prevError {
+//                    currP = testP
+//                    lambdaMulti /= 10
+//                    break
+//                }
+//                lambdaMulti *= 10
+//                if lambdaMulti > 1e9 {
+//                    // failed
+//                    //print("LM early quit, lambda too large: \(lambdaMulti)")
+//                    return currP
+//                }
+//            }
+//
+//            iter += 1
+//        }
+//        return currP
+//    }
+    
+    public func optimize(f: OptFunc, X: [Double], P: [Double], mask: [Double]? = nil) -> [Double] {
         // calculate average error for each value
         //var error = [Double](repeating: 0.0, count: X.count)
 
@@ -137,7 +205,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
         while iter < max_iters {
             // check error
             Xp = f(currP)
-            errorVec = calculateError(newX: Xp, gtX: X)
+            errorVec = calculateError(newX: Xp, gtX: X, mask: mask)
             prevError = sqrt(errorVec.reduce(0.0) { r, d in
                 r + (d*d)
             })
@@ -155,7 +223,7 @@ public class LevenbergMarquardtOptimizer : Optimizer {
             while currError >= prevError {
                 let testP = getNextP(f: f, X: X, P: currP, error: errorVec, lambdaMulti: lambdaMulti)
                 let testXp = f(testP)
-                errorVec = calculateError(newX: testXp, gtX: X)
+                errorVec = calculateError(newX: testXp, gtX: X, mask: mask)
                 currError = sqrt(errorVec.reduce(0.0) { r, d in
                     r + (d*d)
                 })

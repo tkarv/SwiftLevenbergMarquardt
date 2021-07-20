@@ -69,7 +69,7 @@ func solvesLinearEquation(optimizer: Optimizer) -> Bool {
     }
 
     //let optP = optimizer(f: f, X: outs, P: params)
-    let optP = optimizer.optimize(f: f, X: outs, P: params)
+    let optP = optimizer.optimize(f: f, X: outs, P: params, mask: nil)
 
     print(optP)
     let ntp = normalize(arr: trueP)

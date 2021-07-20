@@ -23,19 +23,12 @@ public class NewtonIterationOptimizer : Optimizer {
     }
     
     public init() {}
-    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+    public func optimize(f: OptFunc, X: [Double], P: [Double], mask: [Double]? = nil) -> [Double] {
         let minTolerableError: Double = 0.00001
         let max_iters = 10_000
         var currP = P
         for i in 0..<max_iters {
-            //let Xp = x.map{ f(currP, $0) }
             let Xp = f(currP)
-            //let Xp = f(currP, x)
-    //        let error = zip(Xp, X).map { (Xpvec, Xvec) in
-    //            zip(Xpvec, Xvec).map { (Xpval, Xval) in
-    //                Xpval - Xval
-    //            }
-    //        }
             // calculate average error for each value
             var error = [Double](repeating: 0.0, count: X.count)
             
@@ -43,27 +36,10 @@ public class NewtonIterationOptimizer : Optimizer {
                 error[idx] += Xp[idx] - X[idx]
             }
 
-    //        for (Xpvec, Xvec) in zip(Xp, X) {
-    //            for idx in 0..<Xpvec.count {
-    //                error[idx] += Xpvec[idx] - Xvec[idx]
-    //            }
-    //        }
-            
-    //        for idx in 0..<error.count {
-    //            error[idx] /= Double(Xp.count)
-    //        }
-            
-            //let error = zip(Xp, X).map{$0 - $1}
             let errorsum = error.reduce(0.0) { r, d in
                 r + (d*d)
             }
-    //        let errorsum = error.reduce(0.0) { rv, dvec in
-    //            rv + dvec.reduce(0.0) { r, d in
-    //                r + (d*d)
-    //            }
-    //        }
             
-            //print("\(i)/\(max_iters) err: \(errorsum)")
             if errorsum < minTolerableError {
                 //print("NI converged")
                 break

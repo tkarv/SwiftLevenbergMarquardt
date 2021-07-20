@@ -14,7 +14,7 @@ public typealias OptFuncWithInputOutput = (_ params: [Double], _ x: [Double]) ->
 //public typealias Optimizer = (_ f: (_ params: [Double]) -> [Double], _ X: [Double], _ P: [Double]) -> [Double]
 
 public protocol Optimizer {
-    func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double]
+    func optimize(f: OptFunc, X: [Double], P: [Double], mask: [Double]?) -> [Double]
     func optimizeWithInputOutput(f: OptFuncWithInputOutput, X: [Double], P: [Double], x: [Double]) -> [Double]
 }
 
@@ -218,11 +218,48 @@ func computeDelta(X: Double) -> Double {
     return max(1e-6, abs(X) * 1e-4)
 }
 
+///**
+// Calculate Jacobian of function f with respect to parameters P.
+// We calculate numerically using the provided values X
+// */
+//func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
+//    //let d = computeDelta(X: X)
+//
+//    var J: [Double] = []
+//
+//    // calculate original value
+//    let y0 = f(P)
+//
+//    for (n, p) in P.enumerated() {
+//        // calculate jacobian one parameter at a time
+//        // end result is a flattened M by N matrix where elements at (m,n) are
+//        // ∂f_m / ∂p_n
+//        // elements are in column-major order
+//        // (calculated for one parameter delta at a time)
+//        var newP = P
+//
+//        let d = computeDelta(X: p)
+//
+//        newP[n] += d
+//
+//        let y1 = f(newP)
+//
+//        let grad = zip(y1, y0).map { y1v, y0v in
+//            (y1v - y0v) / d
+//        }
+//
+//        J.append(contentsOf: grad)
+//    }
+//
+//    return J // transpose(A: J, M: P.count, N: y0.count)
+//}
+
 /**
  Calculate Jacobian of function f with respect to parameters P.
  We calculate numerically using the provided values X
+ Mask declares which values to ignore gradient for
  */
-func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
+func calculateJacobian(f: OptFunc, P: [Double], mask: [Double]? = nil) -> [Double] {
     //let d = computeDelta(X: X)
     
     var J: [Double] = []
@@ -244,8 +281,21 @@ func calculateJacobian(f: OptFunc, P: [Double]) -> [Double] {
         
         let y1 = f(newP)
         
-        let grad = zip(y1, y0).map { y1v, y0v in
-            (y1v - y0v) / d
+        var grad: [Double] = []
+        if mask == nil {
+            grad = zip(y1, y0).map { y1v, y0v in
+                (y1v - y0v) / d
+            }
+        } else {
+            for idx in 0..<mask!.count {
+                let y0v = y0[idx]
+                let y1v = y1[idx]
+                let mval = mask![idx]
+                
+                grad.append(
+                    ((y1v - y0v) / d) * mval
+                )
+            }
         }
         
         J.append(contentsOf: grad)

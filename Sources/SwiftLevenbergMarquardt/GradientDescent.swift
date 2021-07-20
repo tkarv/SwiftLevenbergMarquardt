@@ -26,7 +26,7 @@ public class GradientDescentOptimizer : Optimizer {
     }
     
     public init() {}
-    public func optimize(f: OptFunc, X: [Double], P: [Double]) -> [Double] {
+    public func optimize(f: OptFunc, X: [Double], P: [Double], mask: [Double]? = nil) -> [Double] {
         let r = 0.01
         let minTolerableError: Double = 0.000001
         let max_iters = 10_000
